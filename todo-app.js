@@ -2,7 +2,7 @@
 
   const dadPage = '/D:/Programm/JavaScriptCode/1/FistProject/dad.html';
   const momPage = '/D:/Programm/JavaScriptCode/1/FistProject/mom.html';
-  let currentTodoKey = '';
+  let currentTogitdoKey = '';
   let currentPage = location.pathname;
   
   switch (currentPage) {
@@ -57,7 +57,9 @@
         return list;
     }
 
-    function getTodoItem(name, successed) {
+    function createTodoItem(todoItem, {onDone, onRemove}) {
+      const doneClass = 'list-group-item-success';
+      
       let item = document.createElement('li');
       
       let buttonGroup = document.createElement('div');
@@ -65,7 +67,10 @@
       let deleteButton = document.createElement('button');
 
       item.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-center');
-      item.textContent = name;
+      if (todoItem.successed) {
+        item.classList.add(doneClass);
+      }
+      item.textContent = todoItem.name;
 
       buttonGroup.classList.add('btn-group', 'btn-group-sm');
       doneButton.classList.add('btn', 'btn-success');
@@ -73,108 +78,68 @@
       deleteButton.classList.add('btn', 'btn-danger');
       deleteButton.textContent = 'Удалить';
 
+      doneButton.addEventListener('click', function() {
+        onDone({todoItem, element: item});
+        item.classList.toggle(doneClass);
+      });
+      deleteButton.addEventListener('click', function() {
+        onRemove({todoItem, element: item})
+      });
+      
       buttonGroup.append(doneButton);
       buttonGroup.append(deleteButton);
       item.append(buttonGroup);
 
-      if (successed == true) {
-        item.classList.add('list-group-item-success');
-      }
-
-      return {
-          item,
-          doneButton,
-          deleteButton,
-      };
-  };
-    
-    function createTodoItem(data) {
-        let item = document.createElement('li');
-        
-        let buttonGroup = document.createElement('div');
-        let doneButton = document.createElement('button');
-        let deleteButton = document.createElement('button');
-
-        item.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-center');
-        item.textContent = data.name;
-
-        buttonGroup.classList.add('btn-group', 'btn-group-sm');
-        doneButton.classList.add('btn', 'btn-success');
-        doneButton.textContent = 'Готово';
-        deleteButton.classList.add('btn', 'btn-danger');
-        deleteButton.textContent = 'Удалить';
-
-        buttonGroup.append(doneButton);
-        buttonGroup.append(deleteButton);
-        item.append(buttonGroup);
-
-        addToTodo(data);
-
-        return {
-            item,
-            doneButton,
-            deleteButton,
-        };
+      return item
     };
     
     function createTodoApp(container, title = 'Список дел') {
-        let todoAppTitle = createAppTitle(title);
-        let todoItemForm = createTodoItemFotm();
-        let todoList = createTodoList();
-
-        container.append(todoAppTitle);
-        container.append(todoItemForm.form);
-        container.append(todoList);
-
-        let todos = getTodoData();
-        todos = todos ? jsonToData(todos) : [];
-        if (todos.length > 0) {
-          for (let todo of todos) {
-            const itemName = todo.name;
-            let successed = todo.successed;
-            let itemTodo = getTodoItem(itemName, successed);
-
-            itemTodo.doneButton.addEventListener('click', function() {
-              itemTodo.item.classList.toggle('list-group-item-success');
-              toggleDoneTodo(itemName);
-            });
-            itemTodo.deleteButton.addEventListener('click', function() {
-              if (confirm('Вы уверены?')) {
-                  itemTodo.item.remove();
-                  removeFromTodo(itemName);
-              }
-            })
-
-            todoList.append(itemTodo.item);
-          };
-        }
-                
-        todoItemForm.form.addEventListener('submit', function(e) {
-            e.preventDefault();
-          
-            if (!todoItemForm.input.value) {
+      let todoAppTitle = createAppTitle(title);
+      let todoItemForm = createTodoItemFotm();
+      let todoList = createTodoList();
+      const headlers = {
+        onDone({todoItem}) {
+            toggleDoneTodo(todoItem.name); 
+        },
+        onRemove({todoItem, element}) {
+            if (!confirm('Вы уверены?')) {
                 return;
             }
+            element.remove();
+            removeFromTodo(todoItem.name);
+        },
+    };
 
-            const itemName = todoItemForm.input.value
+      container.append(todoAppTitle);
+      container.append(todoItemForm.form);
+      container.append(todoList);
 
-            let todoItem = createTodoItem({name: itemName, successed: false});
+      let todos = getTodoData();
+      todos = todos ? jsonToData(todos) : [];
+      if (todos.length) {
+        todos.forEach(todoItem => {
+          const itemTodo = createTodoItem(todoItem, headlers);
+          todoList.append(itemTodo);
+        });
+      };
+              
+      todoItemForm.form.addEventListener('submit', function(e) {
+        e.preventDefault();
+      
+        if (!todoItemForm.input.value) {
+          return;
+        }
 
-            todoItem.doneButton.addEventListener('click', function() {
-                todoItem.item.classList.toggle('list-group-item-success');
-                toggleDoneTodo(itemName);
-            });
-            todoItem.deleteButton.addEventListener('click', function() {
-                if (confirm('Вы уверены?')) {
-                    todoItem.item.remove();
-                    removeFromTodo(itemName);
-                }
-            })
+        const itemName = todoItemForm.input.value.trim();
 
-            todoList.append(todoItem.item);
+        addToTodo({name: itemName, successed: false});
 
-            todoItemForm.input.value = '';
-        })
+        let todoItem = createTodoItem({name: itemName, successed: false}, headlers);
+
+        todoList.append(todoItem);
+
+        todoItemForm.input.value = '';
+      });
     }
 
     function dataToJson(data) {
